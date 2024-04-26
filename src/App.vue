@@ -1,0 +1,404 @@
+<script setup lang="ts">
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { open } from '@tauri-apps/plugin-dialog';
+import { readDir,create,exists,mkdir} from '@tauri-apps/plugin-fs';
+import { resolve,basename,extname } from '@tauri-apps/api/path';
+import { convertFileSrc,invoke } from '@tauri-apps/api/core';
+import { getCurrent } from '@tauri-apps/api/webviewWindow';
+import { ElMessage } from 'element-plus';
+
+const asideWidth = ref(200)
+const imgref = ref<HTMLImageElement>()
+const images = reactive<imgType[]>([])
+const image = ref<string>("");
+const imageIndex = ref(0)
+const appWindow = getCurrent()
+const mainref = ref()
+const dirpath = ref<string|null>("")
+const input = ref("")
+appWindow.setAlwaysOnTop(true)
+
+interface imgType {
+  httpsrc:string
+  path:string,
+  name:string,
+  bool:boolean
+}
+
+// 选择文件
+const openfile = async function() {
+  const imgfiles = await open({
+    "title":"选择文件",
+    "multiple":true,
+    "filters":[{"extensions":["png","jpg","jpeg","webp"],"name":"图片"}]
+  })
+  if(!imgfiles) return
+  images.length = 0
+  for(let i = 0 ;i < imgfiles.length ; i++){
+    const httpsrc = convertFileSrc(imgfiles[i].path)
+    let name = await basename(imgfiles[i].path)
+    images.push({
+      httpsrc:httpsrc,
+      path:imgfiles[i].path,
+      name:name,
+      bool:false
+    })
+  }
+  image.value  = images[0].httpsrc
+  let filename = await basename(images[0].path);
+  dirpath.value = images[0].path.substring(images[0].path.indexOf(filename)-1,-1)
+  imageIndex.value = 0
+}
+
+// 选择文件夹并拿到文件列表
+const opendir = async function() {
+  dirpath.value = await open({
+    "title":"选择文件夹",
+    "directory":true,
+    "recursive":true,
+  })
+  if(!dirpath.value) return
+  const imgfiles = await readDir(dirpath.value)
+  imgfiles.filter((item,index)=>{
+    if(item.isDirectory){
+      imgfiles.splice(index,1)
+    }
+  })
+  images.length = 0
+  for(let i = 0 ;i<imgfiles.length; i++){
+    const path = await resolve(dirpath.value,imgfiles[i].name)
+    const httpsrc = convertFileSrc(path)
+    let name = await basename(path)
+    images.push({
+      httpsrc:httpsrc,
+      path:path,
+      name:name,
+      bool:false
+    })
+  }
+  image.value  = images[0].httpsrc
+  imageIndex.value = 0
+}
+
+const imageWidth = ref(0)
+const imageHeight = ref(0)
+const imgWidth = ref(0)
+const imgHeight = ref(0)
+const rateWidth = computed(()=>{
+  return Number((imgWidth.value/imageWidth.value).toFixed(3))
+})
+const rateHeight = computed(()=>{
+  return Number((imgHeight.value/imageHeight.value).toFixed(3))
+})
+watch(image,(newvalue,_oldvalue)=>{
+  if(!imgref.value) return
+  const img:HTMLImageElement = new Image()
+  img.src = newvalue
+  img.onload = function(){
+    imageWidth.value = img.width
+    imageHeight.value = img.height
+  }
+})
+
+onMounted(()=>{
+  if(imgref.value){
+    imgref.value.onload = function(){
+      if(imgref.value){
+        imgref.value.src = image.value
+        imgWidth.value = imgref.value.clientWidth
+        imgHeight.value = imgref.value.clientHeight
+      }
+    }
+  }
+
+  document.getElementById('main')?.addEventListener("selectstart",(e)=>{
+    e.preventDefault()
+  })
+
+  document.getElementById('main')?.addEventListener("contextmenu",(e)=>{
+    e.preventDefault()
+  })
+
+  document.getElementById("main")?.addEventListener("wheel",(e:WheelEvent)=>{
+    console.log(e)
+    if(e.deltaY == 125){
+      imageIndex.value = imageIndex.value + 1
+      image.value = images[imageIndex.value].httpsrc
+    }else if(e.deltaY == -125){
+      imageIndex.value = imageIndex.value - 1
+      image.value = images[imageIndex.value].httpsrc
+    }
+  })
+})
+
+const rectShow = ref(false)
+const left = ref(0)
+const top = ref(0)
+const trueLeft = computed( ()=>{
+  return Number((left.value/rateWidth.value).toFixed(0))
+})
+const trueTop = computed(()=>{
+  return Number((top.value/rateHeight.value).toFixed(0))
+})
+const rectWidth = ref(0)
+const rectHeight = ref(0)
+const rectTrueWidth = computed(()=>{
+  return Number((rectWidth.value/rateWidth.value).toFixed(0))
+})
+const rectTrueHeight = computed(()=>{
+  return Number((rectHeight.value/rateHeight.value).toFixed(0))
+})
+const mouseX = ref(0)
+const mouseY = ref(0)
+const mouseDown = function(e:MouseEvent){
+  let dom = document.getElementById("rect")
+  if(dom){
+    left.value = e.offsetX
+    top.value = e.offsetY
+    mouseX.value = e.x
+    mouseY.value = e.y
+    dom.style.left = left.value+'px'
+    dom.style.top = top.value+'px'
+    dom.style.width = '1px'
+    dom.style.height = '1px'
+    rectShow.value  = true
+  }
+}
+
+const mouseMove = function(e:MouseEvent){
+  // console.log(e)
+    if(!rectShow.value) return;
+    let dom:HTMLDivElement = document.getElementById('rect') as HTMLDivElement
+    rectWidth.value = Math.abs(e.x-mouseX.value) 
+    rectHeight.value = Math.abs(e.y-mouseY.value) 
+    dom.style.width = rectWidth.value+'px';
+    dom.style.height = rectHeight.value+'px';
+}
+
+const filename = ref();
+const mouseUp =async function(_e:MouseEvent){
+  rectShow.value = false
+  
+}
+
+const saveData =async function(){
+  filename.value = await basename(decodeURI(image.value));
+  let path = await resolve(dirpath.value as string,filename.value)
+  let savepath = await resolve(dirpath.value as string,"img",filename.value)
+
+  // save path check or create
+  let checkpath = await resolve(dirpath.value as string,"img");
+  let checkpathbool = await exists(checkpath)
+  if(!checkpathbool){
+    await mkdir(checkpath,{"recursive":true})
+  }
+
+  if(!input.value){
+    ElMessage({
+      type:"warning",
+      message:"先填入目标文本"
+    })
+    return 
+  }
+
+  // screenshots
+  await invoke("save_img",{path:path,x:trueLeft.value,y:trueTop.value,width:rectTrueWidth.value,height:rectTrueHeight.value,savepath:savepath})
+
+  // box
+  let lefttop = [trueLeft.value,trueTop.value]
+  let righttop = [trueLeft.value + rectTrueWidth.value,trueTop.value]
+  let rightbottom = [trueLeft.value+ rectTrueWidth.value,trueTop.value+rectTrueHeight.value]
+  let leftbottom = [trueLeft.value,trueTop.value + rectTrueHeight.value]
+  
+  // txt path check or create
+  checkpath = await resolve(dirpath.value as string,"txt/rec")
+  checkpathbool = await exists(checkpath)
+  if(!checkpathbool){
+    await mkdir(checkpath,{"recursive":true})
+  }
+
+  checkpath = await resolve(dirpath.value as string,"txt/det")
+  checkpathbool = await exists(checkpath)
+  if(!checkpathbool){
+    await mkdir(checkpath,{"recursive":true})
+  }
+
+  // create 文本检测 det txt
+  let ext = await extname(filename.value)
+  let name = filename.value.substring(filename.value.indexOf(ext)-1,-1)
+  let txtpath = await resolve(dirpath.value as string,"txt","det",name+'.txt')
+  let txtfile = await create(txtpath)
+  let encoder = new TextEncoder();
+  txtfile.write(encoder.encode(filename.value + '\t' + JSON.stringify({"transcription": input.value,"point":[lefttop,righttop,rightbottom,leftbottom]})))
+  txtfile.close()
+
+  // create 文本识别 rec txt
+  txtpath = await resolve(dirpath.value as string,"txt","rec",name+'.txt')
+  txtfile = await create(txtpath)
+  encoder = new TextEncoder();
+  txtfile.write(encoder.encode(filename.value + '\t' + input.value))
+  txtfile.close()
+  input.value = ""
+}
+
+import hotkeys from 'hotkeys-js';
+hotkeys("ctrl+s",(e)=>{
+  saveData()
+  console.log(e)
+})
+// rec 文本识别  det 文本检测
+
+//  解决 已标记数据 和 未标注数据 的保存 和 读取 、 标注数据文件夹快捷打开、 是鼠标弹起保存还是按键保存 或者 设计一个浮窗 用于 方便文本填写  
+// 同一个图片 多数据标注的情况下 文件和数据对应关系
+</script>
+
+<template>
+  <el-container class="container">
+      <el-aside class="aside" :width="`${asideWidth}px`">
+          <el-button type="primary" class="asidebtn" @click="openfile">选择文件</el-button>
+          <el-button type="primary" class="asidebtn" @click="opendir">选择文件夹</el-button>
+        <div class="asidemessage">
+          <div class="flex" style="width: 50px;">TW:</div>
+          <div class="flex-left" style="width: 50px;">
+            {{ imageWidth }}
+          </div>
+        </div>
+        <div class="asidemessage">
+          <div class="flex" style="width: 50px;">TH:</div>
+          <div class="flex-left" style="width: 50px;">
+            {{ imageHeight }}
+          </div>  
+        </div>
+        <div class="asidemessage">
+          <div class="flex" style="width: 50px;">L:</div>
+          <div class="flex-left" style="width: 50px;">
+            {{ trueLeft }}
+          </div>  
+        </div>
+        <div class="asidemessage">
+          <div class="flex" style="width: 50px;">T:</div>
+          <div class="flex-left" style="width: 50px;">
+            {{ trueTop }}
+          </div>  
+        </div>
+        <div class="asidemessage">
+          <div class="flex" style="width: 50px;">RW:</div>
+          <div class="flex-left" style="width: 50px;">
+            {{ rectTrueWidth }}
+          </div>  
+        </div>
+        <div class="asidemessage">
+          <div class="flex" style="width: 50px;">RH:</div>
+          <div class="flex-left" style="width: 50px;">
+            {{ rectTrueHeight }}
+          </div>  
+        </div>
+        <el-input style="width: calc(100% - 20px);margin: 10px 0px;" type="textarea" v-model="input" placeholder="目标文本" :show-word-limit="true" :autosize="{minRows:4,maxRows: 10}"></el-input>
+        <el-button type="primary" class="asidebtn">标注</el-button>
+      </el-aside>
+      <el-aside id="imglist" class="imglist" >
+        <div class="imglistitem" :style="{background:(index==imageIndex) ? 'pink':'rgba(250,250,250,1)'}" v-for="(item,index) in images" @click="image = item.httpsrc;imageIndex = index">
+          {{ item.name }}
+        </div>
+      </el-aside>
+      <el-main id="main" ref="mainref" class="main">
+        <div class="area">
+            <div class="area_img_div">
+              <img ref="imgref" :style="{width:(imgref&&imageWidth>imageHeight)?'100%':'auto',height:(imgref&&imageWidth>imageHeight)?'auto':'100%'}" :src="image" v-show="image?true:false" />
+            </div>
+            <div class="area_div">
+              <!-- @mouseleave="rectShow = false" @mousedown="mouseDown($event)" @mousemove="mouseMove($event)" @mouseup="mouseUp($event)" -->
+              <div :style="{width:imgWidth+'px',height:imgHeight+'px',position:'relative'}" >
+                <div v-show="rectShow" id="rect" class="rect"></div>
+              </div>
+            </div>
+        </div>
+      </el-main>
+  </el-container>
+</template>
+
+<style lang="less">
+.container{
+  width: 100%;
+  height: 100vh;
+  padding: 0;
+
+  .aside{
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    align-items: center;
+    .asidebtn{
+      width: calc(100% - 20px); ;
+      margin-bottom: 10px;
+      margin-left: 0;
+      height: 30px;
+      // border: none;
+      // background: rgba(225,225,225,1);
+      filter: drop-shadow(0px 0px 2px black);
+      font-size: 12px !important;
+    }
+    .asidemessage{
+      width: calc(100% - 20px);
+      height: 30px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 12px;
+      background: rgba(245,245,245,0.5);
+      margin: 5px 10px;
+      border-radius: 5px;
+      filter: drop-shadow(0px 0px 2px black);
+    }
+  }
+  .imglist{
+    width: 300px;font-size: 12px;background-color:rgba(250,250,250,1);
+    .imglistitem{
+      width: calc(100% - 20px);
+      text-wrap: nowrap;
+      padding: 5px;box-sizing: border-box;background: rgba(230,230,230,0.8);margin: 10px;box-shadow: 0px 0px 5px black;border-radius: 5px;cursor: pointer;
+    }
+  }
+  .main{
+    width: 100%;
+    height: 100%;
+    padding: 0 !important;
+    position: relative;
+    .area{
+      position: relative;
+      width: 100%;
+      height: 100%;
+      .area_img_div{
+        position: absolute;
+        z-index: 50;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(225,225,225,1);
+      }
+      .area_div{
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        z-index: 100;
+        justify-content: center;
+        display: flex;
+        align-items: center;
+        .rect{
+          position: absolute;
+          z-index: 200;
+          width: 100%;
+          height: 100%;
+          background: rgba(123,123,123,0.5);
+
+        }
+      }
+    }
+  }
+}
+</style>
