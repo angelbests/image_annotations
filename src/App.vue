@@ -2,21 +2,24 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { open } from '@tauri-apps/plugin-dialog';
 import { readDir,create,exists,mkdir} from '@tauri-apps/plugin-fs';
-import { resolve,basename,extname, resolveResource} from '@tauri-apps/api/path';
+import { resolve,basename,extname, resourceDir} from '@tauri-apps/api/path';
 import { convertFileSrc,invoke } from '@tauri-apps/api/core';
 import { ElLoading, ElMessage } from 'element-plus';
 import { storeToRefs } from "pinia"
 import { containersStore } from './store';
 import hotkeys from 'hotkeys-js';
 import { isArray } from 'element-plus/es/utils/types.mjs';
+
+// 页面参数
 const asideWidth = ref(200)
 const imgref = ref<HTMLImageElement>()
 const mainref = ref()
 const input = ref("")
+// store 参数
 const c = containersStore()
 const { images,image,dirpath,imageIndex }  = storeToRefs(c)
 
-// 选择文件
+//#region  选择文件 
 const openfile = async function() {
   const imgfiles = await open({
     "title":"选择文件",
@@ -48,7 +51,9 @@ const openfile = async function() {
   load.close()
 }
 
-// 选择文件夹并拿到文件列表
+//#endregion
+
+//#region  选择文件夹并拿到文件列表
 const opendir = async function() {
   let dir = await open({
     "title":"选择文件夹",
@@ -106,16 +111,25 @@ const opendir = async function() {
   load.close()
 }
 
+//#endregion
+
+// 图片真实宽高
 const imageWidth = ref(0)
 const imageHeight = ref(0)
+
+// img 的宽和高
 const imgWidth = ref(0)
 const imgHeight = ref(0)
+
+// 实际缩放比例
 const rateWidth = computed(()=>{
   return Number((imgWidth.value/imageWidth.value).toFixed(3))
 })
 const rateHeight = computed(()=>{
   return Number((imgHeight.value/imageHeight.value).toFixed(3))
 })
+
+// 监听图片的变化 获取 图片真实宽高
 watch(image,(newvalue,_oldvalue)=>{
   if(!imgref.value) return
   const img:HTMLImageElement = new Image()
@@ -126,7 +140,7 @@ watch(image,(newvalue,_oldvalue)=>{
   }
 })
 
-
+// 初始化 禁止选择 右键菜单 滚轮监听
 onMounted(async ()=>{
   if(imgref.value){
     imgref.value.onload = function(){
@@ -164,10 +178,12 @@ onMounted(async ()=>{
         image.value = images.value[images.value.length-1].httpsrc
       }    
     }   
-  })   
+  })
 
+  image.value = images.value[imageIndex.value].httpsrc
 })
-   
+
+//#region  绘制div 鼠标事件
 const rectShow = ref(false) 
 const left = ref(0)
 const top = ref(0)
@@ -203,7 +219,6 @@ const mouseDown = function(e:MouseEvent){
 }
 
 const mouseMove = function(e:MouseEvent){
-  // console.log(e)
     if(!rectShow.value) return;
     let dom:HTMLDivElement = document.getElementById('rect') as HTMLDivElement
     rectWidth.value = Math.abs(e.x-mouseX.value) 
@@ -215,44 +230,54 @@ const mouseMove = function(e:MouseEvent){
 const filename = ref();
 const mouseUp =async function(_e:MouseEvent){
   rectShow.value = false
-}
-
-const saveData =async function(){
-  let load = ElLoading.service({
-    "text":"保存中..."
-  })
   filename.value = await basename(decodeURI(image.value));
-  let path = await resolve(dirpath.value as string,filename.value)
-  let savepath = await resolve(dirpath.value as string,"img",filename.value)
+  await pic_crop()
+}
+//#endregion
 
+const pic_crop =async function(){
+  let path = await resolve(dirpath.value,filename.value)
+  let savepath = await resolve(dirpath.value,"img",filename.value)
   // save path check or create
-  let checkpath = await resolve(dirpath.value as string,"img");
+  let checkpath = await resolve(dirpath.value,"img");
   let checkpathbool = await exists(checkpath)
   if(!checkpathbool){
     await mkdir(checkpath,{"recursive":true})
   }
-
   // screenshots
   await invoke("save_img",{path:path,x:trueLeft.value,y:trueTop.value,width:rectTrueWidth.value,height:rectTrueHeight.value,savepath:savepath})
+
+  // ocr
+  let checkbool = await exists(savepath)
+  if(!checkbool){
+    return
+  }
+  let data:any =  await cmdjs(savepath)
+  if(isArray(data.data)&&data.code == 100){
+    input.value = ""
+    for(let i = 0;i<data.data.length ; i++){
+      input.value = input.value + data.data[i].text.replace(/(^\s*)|(\s*$)/g, "")
+    }
+  }else{
+    ElMessage({
+      "type":"error",
+      "message":data.data
+    })
+  }
+  console.log(data)
+}
+
+const create_det =async function(){
+  let checkpath = await resolve(dirpath.value as string,"txt/det")
+  let checkpathbool = await exists(checkpath)
+  if(!checkpathbool){
+    await mkdir(checkpath,{"recursive":true})
+  }
   // box
   let lefttop = [trueLeft.value,trueTop.value]
   let righttop = [trueLeft.value + rectTrueWidth.value,trueTop.value]
   let rightbottom = [trueLeft.value+ rectTrueWidth.value,trueTop.value+rectTrueHeight.value]
   let leftbottom = [trueLeft.value,trueTop.value + rectTrueHeight.value]
-  
-  // txt path check or create
-  checkpath = await resolve(dirpath.value as string,"txt/rec")
-  checkpathbool = await exists(checkpath)
-  if(!checkpathbool){
-    await mkdir(checkpath,{"recursive":true})
-  }
-
-  checkpath = await resolve(dirpath.value as string,"txt/det")
-  checkpathbool = await exists(checkpath)
-  if(!checkpathbool){
-    await mkdir(checkpath,{"recursive":true})
-  }
-
   // create 文本检测 det txt
   let ext = await extname(filename.value)
   let name = filename.value.substring(filename.value.indexOf(ext)-1,-1)
@@ -261,39 +286,30 @@ const saveData =async function(){
   let encoder = new TextEncoder();
   txtfile.write(encoder.encode(filename.value + '\t' + JSON.stringify({"transcription": input.value,"point":[lefttop,righttop,rightbottom,leftbottom]})))
   txtfile.close()
+}
 
+const create_rec =async function(){
+  // txt path check or create
+  let checkpath = await resolve(dirpath.value as string,"txt/rec")
+  let checkpathbool = await exists(checkpath)
+  if(!checkpathbool){
+    await mkdir(checkpath,{"recursive":true})
+  }
   // create 文本识别 rec txt
-  txtpath = await resolve(dirpath.value as string,"txt","rec",name+'.txt')
-  txtfile = await create(txtpath)
-  encoder = new TextEncoder();
+  let txtpath = await resolve(dirpath.value as string,"txt","rec",name+'.txt')
+  let txtfile = await create(txtpath)
+  let encoder = new TextEncoder();
   txtfile.write(encoder.encode(filename.value + '\t' + input.value))
-
-  let res:any = await cmd(savepath)
-  res = JSON.parse(res)
-  if(isArray(res.data)){
-    if(res.data.length == 1){
-      input.value = res.data[0].text
-    }
-  }else{
-    ElMessage({
-      "type":"error",
-      "message":res.data
-    })
-  }
-  input.value = res
-  console.log(res)
-
-  if(!input.value){
-    ElMessage({
-      type:"warning",
-      message:"先填入目标文本"
-    })
-    load.close()
-    return 
-  }
-
   txtfile.close()
-  // input.value = ""
+}
+
+// 创建和保存文本内容 修改数据状态
+const saveData =async function(){
+  let load = ElLoading.service({
+    "text":"保存中..."
+  })
+  await create_det()
+  await create_rec()
   images.value[imageIndex.value].bool = true
   load.close()
   ElMessage({
@@ -302,34 +318,43 @@ const saveData =async function(){
   })
 }
 
-const timeId = ref(0);
 hotkeys("ctrl+s",(_e)=>{
-  clearTimeout(timeId.value)
-  timeId.value=setTimeout(()=>{
-    saveData()
-  },100)
+  saveData()
 })
-// import { Command } from '@tauri-apps/plugin-shell';
-const cmd =async function(imagepath:string){
-  let exepath = await resolveResource("PaddleOCR-json\\PaddleOCR-json.exe")
-  let res = await invoke("get_paddle_ocr_json_result",{
-    exepath,
-    imagepath
+
+// const cmd =async function(imagepath:string){
+//   let exepath = await resolveResource("PaddleOCR-json\\PaddleOCR-json.exe")
+//   let res = await invoke("get_paddle_ocr_json_result",{
+//     exepath,
+//     imagepath
+//   })
+//   console.log(res,imagepath)
+//   return res as string;
+// }
+
+import { Command } from '@tauri-apps/plugin-shell';
+const cmdjs = async function(imagepath:string){
+  let data = "";
+  let dir = await resolve(await resourceDir(),"PaddleOCR-json")
+  console.log(dir,imagepath)
+  let command = Command.create("PaddleOCR-json",
+    [
+      `-image_path=${imagepath}`
+    ],
+    {
+      cwd:dir
+    }
+  )
+  command.stdout.on("data",(res)=>{
+    if(res.indexOf("code")>0){
+      data = res
+    }
   })
-  console.log(res,imagepath)
-  return res as string;
-
-
-  // let command = await Command.create("cmd",[
-  //   `-det_model_dir='${p}\\ch_PP-OCRv3_det_infer\\'`,
-  //   `-rec_model_dir='${p}\\ch_PP-OCRv3_rec_infer\\'`,
-  //   imagepath
-  // ]) 
-  // let res = await command.execute() 
+  await command.execute()
+  return JSON.parse(data)
 }
 
 // rec 文本识别  det 文本检测
-
 //  解决 已标记数据 和 未标注数据 的保存 和 读取 、 标注数据文件夹快捷打开、 是鼠标弹起保存还是按键保存 或者 设计一个浮窗 用于 方便文本填写  
 // 同一个图片 多数据标注的情况下 文件和数据对应关系
 </script>

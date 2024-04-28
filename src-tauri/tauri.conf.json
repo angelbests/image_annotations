@@ -1,6 +1,6 @@
 {
-  "productName": "tauri_image_annotations",
-  "version": "0.0.0",
+  "productName": "image_annotations",
+  "version": "0.1.0",
   "identifier": "com.tauri.imageannotations",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -10,9 +10,10 @@
   },
   "app": {"windows": [
       {
-        "title": "tauri_image_annotations",
-        "width": 800,
-        "height": 600
+        "title": "图片标注工具",
+        "width": 1200,
+        "height": 800,
+        "center": true
       }
     ],
     "withGlobalTauri": false,
@@ -35,12 +36,31 @@
     ],
     "active": true,
     "targets": "all",
+    "shortDescription": "PaddleOCR图片标注工具",
+    "copyright": "angelbests",
+    "category": "DeveloperTool",
+    "longDescription": "PaddleOCR图片标注工具",
+    "publisher": "angelbests",
+    "windows": {
+      "allowDowngrades": true,
+      "certificateThumbprint": null,
+      "digestAlgorithm": null,
+      "nsis": null,
+      "timestampUrl": null,
+      "tsp": false,
+      "webviewFixedRuntimePath": null,
+      "webviewInstallMode": {
+        "silent": true,
+        "type": "downloadBootstrapper"
+      },
+      "wix": null
+    },
     "icon": [ 
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
+      "icons/icon.ico",
+      "icons/icon.icns"
     ]
   }
 }

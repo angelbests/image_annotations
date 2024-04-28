@@ -1908,6 +1908,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "image_annotations"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "paddleocr",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-autostart",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-http",
+ "tauri-plugin-shell",
+ "tauri-plugin-single-instance",
+]
+
+[[package]]
 name = "imgref"
 version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4363,24 +4381,6 @@ checksum = "5993dc129e544393574288923d1ec447c857f3f644187f4fbf7d9a875fbfc4fb"
 dependencies = [
  "embed-resource",
  "toml 0.7.8",
-]
-
-[[package]]
-name = "tauri_image_annotations"
-version = "0.0.0"
-dependencies = [
- "image",
- "paddleocr",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-autostart",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-http",
- "tauri-plugin-shell",
- "tauri-plugin-single-instance",
 ]
 
 [[package]]
