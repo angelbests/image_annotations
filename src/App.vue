@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { open } from '@tauri-apps/plugin-dialog';
-import { readDir,create,exists,mkdir} from '@tauri-apps/plugin-fs';
+import { readDir,create,exists,mkdir, readTextFile} from '@tauri-apps/plugin-fs';
 import { resolve,basename,extname, resourceDir} from '@tauri-apps/api/path';
 import { convertFileSrc,invoke } from '@tauri-apps/api/core';
 import { ElLoading, ElMessage } from 'element-plus';
@@ -9,15 +9,16 @@ import { storeToRefs } from "pinia"
 import { containersStore } from './store';
 import hotkeys from 'hotkeys-js';
 import { isArray } from 'element-plus/es/utils/types.mjs';
-
+import { getCurrent } from '@tauri-apps/api/webviewWindow';
 // 页面参数
 const asideWidth = ref(200)
 const imgref = ref<HTMLImageElement>()
 const mainref = ref()
 const input = ref("")
+const appWindow =getCurrent()
 // store 参数
 const c = containersStore()
-const { images,image,dirpath,imageIndex }  = storeToRefs(c)
+const { images,image,dirpath,imageIndex,imagessearch }  = storeToRefs(c)
 
 //#region  选择文件 
 const openfile = async function() {
@@ -38,6 +39,12 @@ const openfile = async function() {
     const httpsrc = convertFileSrc(imgfiles[i].path)
     let name = await basename(imgfiles[i].path)
     images.value.push({
+      httpsrc:httpsrc,
+      path:imgfiles[i].path,
+      name:name,
+      bool:false
+    })
+    imagessearch.value.push({
       httpsrc:httpsrc,
       path:imgfiles[i].path,
       name:name,
@@ -105,6 +112,12 @@ const opendir = async function() {
       name:name,
       bool:false
     })
+    imagessearch.value.push({
+      httpsrc:httpsrc,
+      path:path,
+      name:name,
+      bool:false
+    })
   }
   image.value  = images.value[0].httpsrc
   imageIndex.value = 0
@@ -152,6 +165,10 @@ onMounted(async ()=>{
     }
   }
 
+  image.value = ""
+  image.value = images.value[imageIndex.value].httpsrc
+  appWindow.setTitle("数据标注工具 图片名称："+images.value[imageIndex.value].name+" 总数：" +imagessearch.value.length+" 序号："+(imageIndex.value+1))
+
   document.getElementById('main')?.addEventListener("selectstart",(e)=>{
     e.preventDefault()
   })
@@ -160,7 +177,7 @@ onMounted(async ()=>{
     e.preventDefault()
   })
 
-  document.getElementById("main")?.addEventListener("wheel",(e:WheelEvent)=>{
+  document.getElementById("main")?.addEventListener("wheel",async (e:WheelEvent)=>{
     if(e.deltaY == 125){
       if(imageIndex.value < images.value.length-1){
         imageIndex.value = imageIndex.value + 1
@@ -177,11 +194,44 @@ onMounted(async ()=>{
         imageIndex.value = images.value.length-1
         image.value = images.value[images.value.length-1].httpsrc
       }    
-    }   
+    }
+    wheelchange()
   })
 
-  image.value = images.value[imageIndex.value].httpsrc
+  wheelchange()
 })
+
+const wheelchange =async function(){
+  input.value = ""
+  appWindow.setTitle("数据标注工具 图片名称："+images.value[imageIndex.value].name+" 总数：" +imagessearch.value.length+" 序号："+(imageIndex.value+1))
+  filename.value = images.value[imageIndex.value].name
+  let path = await resolve(dirpath.value,"img",images.value[imageIndex.value].name)
+  if(await exists(path)){
+    corpImage.value = convertFileSrc(path)
+  }else{
+    corpImage.value = ""
+  }
+
+  left.value =0
+  top.value = 0
+  rectHeight.value =0
+  rectWidth.value = 0
+
+  let ext = await extname(filename.value)
+  let name = filename.value.substring(filename.value.indexOf(ext)-1,-1)
+  let txtpath = await resolve(dirpath.value as string,"txt","det",name+'.txt')
+  if(await exists(txtpath)){
+    let txt = await readTextFile(txtpath)
+    let txtarr = txt.split("\t")
+    let obj = JSON.parse(txtarr[1])
+    console.log(obj)
+    input.value = obj.transcription
+    left.value = Number((obj.point[0][0]*rateWidth.value).toFixed(0))
+    top.value = Number((obj.point[0][1]*rateHeight.value).toFixed(0))
+    rectHeight.value = Number(((obj.point[3][1]-obj.point[0][1])*rateHeight.value).toFixed(0))
+    rectWidth.value = Number(((obj.point[1][0]-obj.point[0][0])*rateWidth.value).toFixed(0))
+  }
+}
 
 //#region  绘制div 鼠标事件
 const rectShow = ref(false) 
@@ -235,6 +285,7 @@ const mouseUp =async function(_e:MouseEvent){
 }
 //#endregion
 
+const corpImage= ref("");
 const pic_crop =async function(){
   let path = await resolve(dirpath.value,filename.value)
   let savepath = await resolve(dirpath.value,"img",filename.value)
@@ -252,6 +303,7 @@ const pic_crop =async function(){
   if(!checkbool){
     return
   }
+  corpImage.value = convertFileSrc(savepath)
   let data:any =  await cmdjs(savepath)
   if(isArray(data.data)&&data.code == 100){
     input.value = ""
@@ -296,6 +348,8 @@ const create_rec =async function(){
     await mkdir(checkpath,{"recursive":true})
   }
   // create 文本识别 rec txt
+  let ext = await extname(filename.value)
+  let name = filename.value.substring(filename.value.indexOf(ext)-1,-1)
   let txtpath = await resolve(dirpath.value as string,"txt","rec",name+'.txt')
   let txtfile = await create(txtpath)
   let encoder = new TextEncoder();
@@ -311,6 +365,7 @@ const saveData =async function(){
   await create_det()
   await create_rec()
   images.value[imageIndex.value].bool = true
+  imagessearch.value[imageIndex.value].bool = true
   load.close()
   ElMessage({
     "type":"success",
@@ -352,6 +407,20 @@ const cmdjs = async function(imagepath:string){
   })
   await command.execute()
   return JSON.parse(data)
+}
+
+const imgsearch = ref("")
+
+const timeId = ref(0);
+const search = function(){
+  clearTimeout(timeId.value)
+  timeId.value = setTimeout(()=>{
+    images.value = imagessearch.value.filter((item)=>{
+      return item.name.indexOf(imgsearch.value)>=0
+    })
+    console.log(images.value,imgsearch.value)
+  },100)
+  
 }
 
 // rec 文本识别  det 文本检测
@@ -402,11 +471,16 @@ const cmdjs = async function(imagepath:string){
         </div>
         <el-input style="width: calc(100% - 20px);margin: 10px 0px;" type="textarea" v-model="input" placeholder="目标文本" :show-word-limit="true" :autosize="{minRows:4,maxRows: 10}"></el-input>
         <el-button type="primary" class="asidebtn" @click="saveData">标注</el-button>
+        <img :src="corpImage?corpImage:'./public/null.png'" style="width: 180px;height: 180px;object-fit: contain;box-shadow: 0px 0px 5px black;border-radius: 5px;" />
       </el-aside>
-      <el-aside id="imglist" class="imglist" >
-        <div class="imglistitem" :style="{background:(index==imageIndex) ? 'pink':'rgba(250,250,250,1)',border:item.bool?'1px solid black':'none'}" v-for="(item,index) in images" @click="image = item.httpsrc;imageIndex = index">
-          {{ item.name }}
+      <el-aside id="imglist" class="imglist" style="">
+        <el-input @input="search" @keyup.enter="search" v-model="imgsearch" class="imginput" placeholder="搜索"></el-input>
+        <div class="imglistcon">
+          <div class="imglistitem" :style="{background:(index==imageIndex) ? 'pink':'rgba(250,250,250,1)',border:item.bool?'1px solid black':'none'}" v-for="(item,index) in images" @click="image = item.httpsrc;imageIndex = index;wheelchange()">
+            {{ item.name }}
+          </div>        
         </div>
+  
       </el-aside>
       <el-main id="main" ref="mainref" class="main">
         <div class="area">
@@ -458,11 +532,37 @@ const cmdjs = async function(imagepath:string){
     }
   }
   .imglist{
-    width: 300px;font-size: 12px;background-color:rgba(250,250,250,1);
-    .imglistitem{
-      width: calc(100% - 20px);
-      text-wrap: nowrap;
-      padding: 5px;box-sizing: border-box;background: rgba(230,230,230,0.8);margin: 10px;box-shadow: 0px 0px 5px black;border-radius: 5px;cursor: pointer;
+    width: 300px;
+    font-size: 12px;
+    background-color:rgba(20,250,250,1);
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    align-items: start;
+    box-sizing: border-box;
+    overflow: hidden;
+    .imginput{
+      width:calc(100% - 20px);
+      height: 30px;
+      margin: 10px;
+      filter: drop-shadow(0px 0px 5px rgba(100,100,100,1));
+      border-radius: 5px;
+    }
+    .imglistcon{
+      overflow-y: scroll;
+      width:100%;
+      height: calc(100% - 40px);
+      .imglistitem{
+        width: calc(100% - 20px);
+        text-wrap: nowrap;
+        background: rgba(230,230,230,0.8);
+        padding: 5px;
+        box-sizing: border-box;
+        margin: 10px;
+        box-shadow: 0px 0px 5px black;
+        border-radius: 5px;
+        cursor: pointer;
+      }
     }
   }
   .main{
@@ -505,5 +605,9 @@ const cmdjs = async function(imagepath:string){
       }
     }
   }
+}
+
+::-webkit-scrollbar{
+  display: none;
 }
 </style>

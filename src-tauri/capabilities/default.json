@@ -66,6 +66,7 @@
 
     "webview:allow-internal-toggle-devtools",
     "window:allow-set-always-on-top",
+    "window:allow-set-title",
     "shell:allow-open",
     {
       "identifier":"shell:allow-execute",

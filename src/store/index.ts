@@ -12,6 +12,7 @@ export const containersStore = defineStore("containers",{
         return {
             dirpath:"",
             images:[] as imgType[],
+            imagessearch:[] as imgType[],
             image:"",
             imageIndex:0
         }
