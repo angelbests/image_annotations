@@ -1,29 +1,19 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { open } from '@tauri-apps/plugin-dialog';
-import { readDir,create,exists,mkdir} from '@tauri-apps/plugin-fs';
-import { resolve,basename,extname } from '@tauri-apps/api/path';
+import { readDir,create,exists,mkdir, readTextFile, BaseDirectory} from '@tauri-apps/plugin-fs';
+import { resolve,basename,extname, resourceDir} from '@tauri-apps/api/path';
 import { convertFileSrc,invoke } from '@tauri-apps/api/core';
-import { getCurrent } from '@tauri-apps/api/webviewWindow';
-import { ElMessage } from 'element-plus';
-
+import { ElLoading, ElMessage } from 'element-plus';
+import { storeToRefs } from "pinia"
+import { containersStore } from './store';
 const asideWidth = ref(200)
 const imgref = ref<HTMLImageElement>()
-const images = reactive<imgType[]>([])
-const image = ref<string>("");
-const imageIndex = ref(0)
-const appWindow = getCurrent()
 const mainref = ref()
-const dirpath = ref<string|null>("")
-const input = ref("")
-appWindow.setAlwaysOnTop(true)
 
-interface imgType {
-  httpsrc:string
-  path:string,
-  name:string,
-  bool:boolean
-}
+const input = ref("")
+const c = containersStore()
+const { images,image,dirpath,imageIndex }  = storeToRefs(c)
 
 // 选择文件
 const openfile = async function() {
@@ -32,52 +22,87 @@ const openfile = async function() {
     "multiple":true,
     "filters":[{"extensions":["png","jpg","jpeg","webp"],"name":"图片"}]
   })
-  if(!imgfiles) return
-  images.length = 0
+  let load = ElLoading.service({
+    "text":"加载图片中...",
+  })
+  if(!imgfiles) {
+    load.close()
+    return
+  }
+  images.value.length = 0
   for(let i = 0 ;i < imgfiles.length ; i++){
     const httpsrc = convertFileSrc(imgfiles[i].path)
     let name = await basename(imgfiles[i].path)
-    images.push({
+    images.value.push({
       httpsrc:httpsrc,
       path:imgfiles[i].path,
       name:name,
       bool:false
     })
   }
-  image.value  = images[0].httpsrc
-  let filename = await basename(images[0].path);
-  dirpath.value = images[0].path.substring(images[0].path.indexOf(filename)-1,-1)
+  image.value  = images.value[0].httpsrc
+  let filename = await basename(images.value[0].path);
+  dirpath.value = images.value[0].path.substring(images.value[0].path.indexOf(filename)-1,-1)
   imageIndex.value = 0
+  load.close()
 }
 
 // 选择文件夹并拿到文件列表
 const opendir = async function() {
-  dirpath.value = await open({
+  let dir = await open({
     "title":"选择文件夹",
     "directory":true,
     "recursive":true,
   })
-  if(!dirpath.value) return
-  const imgfiles = await readDir(dirpath.value)
-  imgfiles.filter((item,index)=>{
-    if(item.isDirectory){
-      imgfiles.splice(index,1)
-    }
+  let load = ElLoading.service({
+    "text":"加载图片中..."
   })
-  images.length = 0
+  if(!dir){
+    load.close()
+    return
+  }
+  dirpath.value = dir
+  const imgfiles = await readDir(dirpath.value)
+  if(!imgfiles.length){
+    load.close()
+    return
+  }
+  let arr = []
+  for(let i = 0;i<imgfiles.length;i++){
+    if(imgfiles[i].isDirectory){
+      imgfiles.splice(i,1)
+      continue;
+    }
+    
+    let ext = await extname(imgfiles[i].name)
+    if(!ext){
+      imgfiles.splice(i,1)
+      continue
+    }
+    let extarr = ["jpg","jpeg","png","webp"];
+    if(extarr.indexOf(ext.toLocaleLowerCase())<0){
+      imgfiles.splice(i,1)
+      continue;
+    }
+    arr.push(imgfiles[i])
+  }
+  imgfiles.length = 0
+  imgfiles.push(...arr)
+  images.value.length = 0
   for(let i = 0 ;i<imgfiles.length; i++){
     const path = await resolve(dirpath.value,imgfiles[i].name)
     const httpsrc = convertFileSrc(path)
     let name = await basename(path)
-    images.push({
+    images.value.push({
       httpsrc:httpsrc,
       path:path,
       name:name,
       bool:false
     })
   }
-  image.value  = images[0].httpsrc
+  image.value  = images.value[0].httpsrc
   imageIndex.value = 0
+  load.close()
 }
 
 const imageWidth = ref(0)
@@ -100,7 +125,8 @@ watch(image,(newvalue,_oldvalue)=>{
   }
 })
 
-onMounted(()=>{
+
+onMounted(async ()=>{
   if(imgref.value){
     imgref.value.onload = function(){
       if(imgref.value){
@@ -115,23 +141,33 @@ onMounted(()=>{
     e.preventDefault()
   })
 
-  document.getElementById('main')?.addEventListener("contextmenu",(e)=>{
+  document.addEventListener("contextmenu",(e)=>{
     e.preventDefault()
   })
 
   document.getElementById("main")?.addEventListener("wheel",(e:WheelEvent)=>{
-    console.log(e)
     if(e.deltaY == 125){
-      imageIndex.value = imageIndex.value + 1
-      image.value = images[imageIndex.value].httpsrc
+      if(imageIndex.value < images.value.length-1){
+        imageIndex.value = imageIndex.value + 1
+        image.value = images.value[imageIndex.value].httpsrc
+      }else{
+        imageIndex.value = 0
+        image.value = images.value[0].httpsrc
+      }
     }else if(e.deltaY == -125){
-      imageIndex.value = imageIndex.value - 1
-      image.value = images[imageIndex.value].httpsrc
-    }
-  })
-})
+      if(imageIndex.value !=0){
+        imageIndex.value = imageIndex.value - 1
+        image.value = images.value[imageIndex.value].httpsrc
+      }else{
+        imageIndex.value = images.value.length-1
+        image.value = images.value[images.value.length-1].httpsrc
+      }    
+    }   
+  })   
 
-const rectShow = ref(false)
+})
+   
+const rectShow = ref(false) 
 const left = ref(0)
 const top = ref(0)
 const trueLeft = computed( ()=>{
@@ -178,10 +214,12 @@ const mouseMove = function(e:MouseEvent){
 const filename = ref();
 const mouseUp =async function(_e:MouseEvent){
   rectShow.value = false
-  
 }
 
 const saveData =async function(){
+  let load = ElLoading.service({
+    "text":"保存中..."
+  })
   filename.value = await basename(decodeURI(image.value));
   let path = await resolve(dirpath.value as string,filename.value)
   let savepath = await resolve(dirpath.value as string,"img",filename.value)
@@ -198,6 +236,7 @@ const saveData =async function(){
       type:"warning",
       message:"先填入目标文本"
     })
+    load.close()
     return 
   }
 
@@ -239,13 +278,38 @@ const saveData =async function(){
   txtfile.write(encoder.encode(filename.value + '\t' + input.value))
   txtfile.close()
   input.value = ""
+  images.value[imageIndex.value].bool = true
+  load.close()
+  ElMessage({
+    "type":"success",
+    "message":"已标注！"
+  })
 }
 
 import hotkeys from 'hotkeys-js';
+
 hotkeys("ctrl+s",(e)=>{
+  cmd();
   saveData()
   console.log(e)
+  
 })
+import { Command } from '@tauri-apps/plugin-shell';
+const cmd =async function(){
+  let cmd = `-image_path='${images.value[imageIndex.value].path}'`;
+  let command = await Command.create("cmd",[cmd]) 
+  let res = await command.execute() 
+  console.log(res)
+
+  let p = await resourceDir();
+  
+  console.log(p)
+//  -det_model_dir='$RESOURCE\\sidecar\\models\\ch_PP-OCRv3_det_infer' 
+//  -rec_model_dir='$RESOURCE\\sidecar\\models\\ch_PP-OCRv3_rec_infer'
+// det_model_dir [models/ch_PP-OCRv3_det_infer] does not exist. 
+// rec_model_dir [models/ch_PP-OCRv3_rec_infer] does not exist. 
+}
+
 // rec 文本识别  det 文本检测
 
 //  解决 已标记数据 和 未标注数据 的保存 和 读取 、 标注数据文件夹快捷打开、 是鼠标弹起保存还是按键保存 或者 设计一个浮窗 用于 方便文本填写  
@@ -294,10 +358,10 @@ hotkeys("ctrl+s",(e)=>{
           </div>  
         </div>
         <el-input style="width: calc(100% - 20px);margin: 10px 0px;" type="textarea" v-model="input" placeholder="目标文本" :show-word-limit="true" :autosize="{minRows:4,maxRows: 10}"></el-input>
-        <el-button type="primary" class="asidebtn">标注</el-button>
+        <el-button type="primary" class="asidebtn" @click="saveData">标注</el-button>
       </el-aside>
       <el-aside id="imglist" class="imglist" >
-        <div class="imglistitem" :style="{background:(index==imageIndex) ? 'pink':'rgba(250,250,250,1)'}" v-for="(item,index) in images" @click="image = item.httpsrc;imageIndex = index">
+        <div class="imglistitem" :style="{background:(index==imageIndex) ? 'pink':'rgba(250,250,250,1)',border:item.bool?'1px solid black':'none'}" v-for="(item,index) in images" @click="image = item.httpsrc;imageIndex = index">
           {{ item.name }}
         </div>
       </el-aside>
@@ -308,7 +372,7 @@ hotkeys("ctrl+s",(e)=>{
             </div>
             <div class="area_div">
               <!-- @mouseleave="rectShow = false" @mousedown="mouseDown($event)" @mousemove="mouseMove($event)" @mouseup="mouseUp($event)" -->
-              <div :style="{width:imgWidth+'px',height:imgHeight+'px',position:'relative'}" >
+              <div :style="{width:imgWidth+'px',height:imgHeight+'px',position:'relative'}" @mouseleave="rectShow = false" @mousedown="mouseDown($event)" @mousemove="mouseMove($event)" @mouseup="mouseUp($event)" >
                 <div v-show="rectShow" id="rect" class="rect"></div>
               </div>
             </div>
@@ -334,8 +398,6 @@ hotkeys("ctrl+s",(e)=>{
       margin-bottom: 10px;
       margin-left: 0;
       height: 30px;
-      // border: none;
-      // background: rgba(225,225,225,1);
       filter: drop-shadow(0px 0px 2px black);
       font-size: 12px !important;
     }

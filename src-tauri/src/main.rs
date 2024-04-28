@@ -28,5 +28,6 @@ use image::open;
 fn save_img(path:&str,x:u32,y:u32,width:u32,height:u32,savepath:&str){
     let mut img = open(path).unwrap();
     let imgcrop = img.crop(x, y, width, height);
+    
     let _ = imgcrop.save(savepath);
 }
