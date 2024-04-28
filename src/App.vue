@@ -35,6 +35,7 @@ const openfile = async function() {
     return
   }
   images.value.length = 0
+  imagessearch.value.length = 0
   for(let i = 0 ;i < imgfiles.length ; i++){
     const httpsrc = convertFileSrc(imgfiles[i].path)
     let name = await basename(imgfiles[i].path)
@@ -102,6 +103,7 @@ const opendir = async function() {
   imgfiles.length = 0
   imgfiles.push(...arr)
   images.value.length = 0
+  imagessearch.value.length = 0
   for(let i = 0 ;i<imgfiles.length; i++){
     const path = await resolve(dirpath.value,imgfiles[i].name)
     const httpsrc = convertFileSrc(path)
