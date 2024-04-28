@@ -21,5 +21,6 @@ tauri-plugin-dialog = "2.0.0-beta.6"
 tauri-plugin-single-instance = "2.0.0-beta.6"
 tauri-plugin-http = "2.0.0-beta.6"
 image = "0.25.1"
+paddleocr = "0.4.1"
 
  

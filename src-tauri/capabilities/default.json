@@ -72,12 +72,18 @@
       "allow": [
         {
           "name":"cmd",
-          "cmd": "$RESOURCE\\sidecar\\PaddleOCR-json.exe",
+          "cmd": "$RESOURCE\\PaddleOCR-json\\PaddleOCR-json.exe",
           "args":true,
           "sidecar": false,
-          "path":"$RESOURCE\\sidecar\\*"
+          "path":[
+            "$RESOURCE\\PaddleOCR-json\\*",
+            "$RESOURCE\\PaddleOCR-json\\models\\*",
+            "$RESOURCE\\PaddleOCR-json\\models\\ch_PP-OCRv3_det_infer\\*",
+            "$RESOURCE\\PaddleOCR-json\\models\\ch_PP-OCRv3_det_infer\\*"
+          ]
         }
       ]
+      
     },
     {
       "identifier":"fs:allow-resource-meta",

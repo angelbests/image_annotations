@@ -28,8 +28,10 @@
   },
   "bundle": {
     "resources":[
-      "sidecar\\*",
-      "sidecar\\models\\*"
+      "PaddleOCR-json\\models\\ch_PP-OCRv3_det_infer\\*",
+      "PaddleOCR-json\\models\\ch_PP-OCRv3_rec_infer\\*",
+      "PaddleOCR-json\\models\\*",
+      "PaddleOCR-json\\*"
     ],
     "active": true,
     "targets": "all",

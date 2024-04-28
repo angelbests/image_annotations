@@ -2632,6 +2632,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
+name = "paddleocr"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e5d815829efd26c67ba8a89a36b6b8b7f8dcd5f38eff4cd2d1dbc307e1fcef3"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "pango"
 version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4360,6 +4370,7 @@ name = "tauri_image_annotations"
 version = "0.0.0"
 dependencies = [
  "image",
+ "paddleocr",
  "serde",
  "serde_json",
  "tauri",

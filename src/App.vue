@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { open } from '@tauri-apps/plugin-dialog';
-import { readDir,create,exists,mkdir, readTextFile, BaseDirectory} from '@tauri-apps/plugin-fs';
-import { resolve,basename,extname, resourceDir} from '@tauri-apps/api/path';
+import { readDir,create,exists,mkdir} from '@tauri-apps/plugin-fs';
+import { resolve,basename,extname, resolveResource} from '@tauri-apps/api/path';
 import { convertFileSrc,invoke } from '@tauri-apps/api/core';
 import { ElLoading, ElMessage } from 'element-plus';
 import { storeToRefs } from "pinia"
 import { containersStore } from './store';
+import hotkeys from 'hotkeys-js';
+import { isArray } from 'element-plus/es/utils/types.mjs';
 const asideWidth = ref(200)
 const imgref = ref<HTMLImageElement>()
 const mainref = ref()
-
 const input = ref("")
 const c = containersStore()
 const { images,image,dirpath,imageIndex }  = storeToRefs(c)
@@ -231,18 +232,8 @@ const saveData =async function(){
     await mkdir(checkpath,{"recursive":true})
   }
 
-  if(!input.value){
-    ElMessage({
-      type:"warning",
-      message:"先填入目标文本"
-    })
-    load.close()
-    return 
-  }
-
   // screenshots
   await invoke("save_img",{path:path,x:trueLeft.value,y:trueTop.value,width:rectTrueWidth.value,height:rectTrueHeight.value,savepath:savepath})
-
   // box
   let lefttop = [trueLeft.value,trueTop.value]
   let righttop = [trueLeft.value + rectTrueWidth.value,trueTop.value]
@@ -276,8 +267,33 @@ const saveData =async function(){
   txtfile = await create(txtpath)
   encoder = new TextEncoder();
   txtfile.write(encoder.encode(filename.value + '\t' + input.value))
+
+  let res:any = await cmd(savepath)
+  res = JSON.parse(res)
+  if(isArray(res.data)){
+    if(res.data.length == 1){
+      input.value = res.data[0].text
+    }
+  }else{
+    ElMessage({
+      "type":"error",
+      "message":res.data
+    })
+  }
+  input.value = res
+  console.log(res)
+
+  if(!input.value){
+    ElMessage({
+      type:"warning",
+      message:"先填入目标文本"
+    })
+    load.close()
+    return 
+  }
+
   txtfile.close()
-  input.value = ""
+  // input.value = ""
   images.value[imageIndex.value].bool = true
   load.close()
   ElMessage({
@@ -286,28 +302,30 @@ const saveData =async function(){
   })
 }
 
-import hotkeys from 'hotkeys-js';
-
-hotkeys("ctrl+s",(e)=>{
-  cmd();
-  saveData()
-  console.log(e)
-  
+const timeId = ref(0);
+hotkeys("ctrl+s",(_e)=>{
+  clearTimeout(timeId.value)
+  timeId.value=setTimeout(()=>{
+    saveData()
+  },100)
 })
-import { Command } from '@tauri-apps/plugin-shell';
-const cmd =async function(){
-  let cmd = `-image_path='${images.value[imageIndex.value].path}'`;
-  let command = await Command.create("cmd",[cmd]) 
-  let res = await command.execute() 
-  console.log(res)
+// import { Command } from '@tauri-apps/plugin-shell';
+const cmd =async function(imagepath:string){
+  let exepath = await resolveResource("PaddleOCR-json\\PaddleOCR-json.exe")
+  let res = await invoke("get_paddle_ocr_json_result",{
+    exepath,
+    imagepath
+  })
+  console.log(res,imagepath)
+  return res as string;
 
-  let p = await resourceDir();
-  
-  console.log(p)
-//  -det_model_dir='$RESOURCE\\sidecar\\models\\ch_PP-OCRv3_det_infer' 
-//  -rec_model_dir='$RESOURCE\\sidecar\\models\\ch_PP-OCRv3_rec_infer'
-// det_model_dir [models/ch_PP-OCRv3_det_infer] does not exist. 
-// rec_model_dir [models/ch_PP-OCRv3_rec_infer] does not exist. 
+
+  // let command = await Command.create("cmd",[
+  //   `-det_model_dir='${p}\\ch_PP-OCRv3_det_infer\\'`,
+  //   `-rec_model_dir='${p}\\ch_PP-OCRv3_rec_infer\\'`,
+  //   imagepath
+  // ]) 
+  // let res = await command.execute() 
 }
 
 // rec 文本识别  det 文本检测
