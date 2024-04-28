@@ -473,7 +473,7 @@ const search = function(){
         </div>
         <el-input style="width: calc(100% - 20px);margin: 10px 0px;" type="textarea" v-model="input" placeholder="目标文本" :show-word-limit="true" :autosize="{minRows:4,maxRows: 10}"></el-input>
         <el-button type="primary" class="asidebtn" @click="saveData">标注</el-button>
-        <img :src="corpImage?corpImage:'./public/null.png'" style="width: 180px;height: 180px;object-fit: contain;box-shadow: 0px 0px 5px black;border-radius: 5px;" />
+        <img :src="corpImage?corpImage:'public/null.png'" style="width: 180px;height: 180px;object-fit: contain;box-shadow: 0px 0px 5px black;border-radius: 5px;" />
       </el-aside>
       <el-aside id="imglist" class="imglist" style="">
         <el-input @input="search" @keyup.enter="search" v-model="imgsearch" class="imginput" placeholder="搜索"></el-input>
