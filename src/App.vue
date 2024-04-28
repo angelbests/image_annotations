@@ -57,6 +57,7 @@ const openfile = async function() {
   dirpath.value = images.value[0].path.substring(images.value[0].path.indexOf(filename)-1,-1)
   imageIndex.value = 0
   load.close()
+  appWindow.setTitle("数据标注工具 图片名称："+images.value[imageIndex.value].name+" 总数：" +imagessearch.value.length+" 序号："+(imageIndex.value+1))
 }
 
 //#endregion
@@ -124,6 +125,8 @@ const opendir = async function() {
   image.value  = images.value[0].httpsrc
   imageIndex.value = 0
   load.close()
+
+  appWindow.setTitle("数据标注工具 图片名称："+images.value[imageIndex.value].name+" 总数：" +imagessearch.value.length+" 序号："+(imageIndex.value+1))
 }
 
 //#endregion
@@ -305,6 +308,7 @@ const pic_crop =async function(){
   if(!checkbool){
     return
   }
+  corpImage.value = "null.png"
   corpImage.value = convertFileSrc(savepath)
   let data:any =  await cmdjs(savepath)
   if(isArray(data.data)&&data.code == 100){
@@ -473,7 +477,7 @@ const search = function(){
         </div>
         <el-input style="width: calc(100% - 20px);margin: 10px 0px;" type="textarea" v-model="input" placeholder="目标文本" :show-word-limit="true" :autosize="{minRows:4,maxRows: 10}"></el-input>
         <el-button type="primary" class="asidebtn" @click="saveData">标注</el-button>
-        <img :src="corpImage?corpImage:'public/null.png'" style="width: 180px;height: 180px;object-fit: contain;box-shadow: 0px 0px 5px black;border-radius: 5px;" />
+        <img :src="corpImage?corpImage:'null.png'" style="width: 180px;height: 180px;object-fit: contain;box-shadow: 0px 0px 5px black;border-radius: 5px;" />
       </el-aside>
       <el-aside id="imglist" class="imglist" style="">
         <el-input @input="search" @keyup.enter="search" v-model="imgsearch" class="imginput" placeholder="搜索"></el-input>
