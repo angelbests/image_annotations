@@ -308,8 +308,7 @@ const pic_crop =async function(){
   if(!checkbool){
     return
   }
-  corpImage.value = "null.png"
-  corpImage.value = convertFileSrc(savepath)
+  corpImage.value = convertFileSrc(savepath)+"?tempid="+Math.random()
   let data:any =  await cmdjs(savepath)
   if(isArray(data.data)&&data.code == 100){
     input.value = ""
