@@ -174,7 +174,7 @@ window.onresize = function(){
 
 //#region  初始化 禁止选择 右键菜单 滚轮监听
 onMounted(async ()=>{
-  appWindow.setAlwaysOnTop(true)
+  // appWindow.setAlwaysOnTop(true)
   fabricinit('c')
   fabricrect()
   cv = new fabric.Canvas('cv')
