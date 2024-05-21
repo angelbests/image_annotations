@@ -126,6 +126,12 @@ watch(image,(newvalue,_oldvalue)=>{
       "behavior":'smooth',
       "top":48*labelindex.value,
     })
+
+    let labellist_dom = document.getElementById('labellist')
+    labellist_dom?.scrollTo({
+      "behavior":"smooth",
+      "top":36*imageIndex.value
+    })
   }
 },{
   "immediate":true,
@@ -851,7 +857,7 @@ const mergetxt = async function(){
       </el-aside>
       <el-aside id="imglist" class="imglist">
         <el-input @input="search" @keyup.enter="search" v-model="imgsearch" class="imginput" placeholder="搜索"></el-input>
-        <div class="imglistcon">
+        <div class="imglistcon" id="labellist">
           <div class="imglistitem" :style="{background:(item.bool?'#07485b':(index==imageIndex)?'#8ec7d2':'rgba(250,250,250,1)')}" v-for="(item,index) in images" @click="image = item.httpsrc;imageIndex = index;">
             {{ item.name }}
             <el-icon v-show="item.bool"><check/></el-icon>
