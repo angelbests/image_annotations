@@ -99,3 +99,16 @@ export const opendir = async function(){
   }
   //#endregion
 
+export const b64ToBlob = function(urlData:string) {
+  var arr:any[] = urlData.split(',');
+  var mime = arr[0].match(/:(.*?);/)[1] || 'image/jpeg';
+  var bytes = window.atob(arr[1]);
+  var ab = new ArrayBuffer(bytes.length);
+  var ia = new Uint8Array(ab);
+  for (var i = 0; i < bytes.length; i++) {
+      ia[i] = bytes.charCodeAt(i);
+  }
+  return new Blob([ab], {
+      type: mime
+  });
+}

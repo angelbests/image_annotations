@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import { opendir,openfile } from './function';
+import { opendir,openfile,b64ToBlob } from './function';
 import { create,exists,readTextFile,writeTextFile, writeFile,mkdir} from '@tauri-apps/plugin-fs';
 import { appLocalDataDir, extname, resolve,resourceDir} from '@tauri-apps/api/path';
 import { convertFileSrc} from '@tauri-apps/api/core';
@@ -23,6 +23,7 @@ const { images,image,dirpath,imageIndex,imagessearch,filename }  = storeToRefs(c
 const labeldata = ref<any[]>([])
 const labelindex = ref(0)
 const rectindex = ref(0)
+
 //#region  图片选择
 interface imgType {
     httpsrc:string
@@ -66,7 +67,7 @@ const getImage = async function(type:string){
 }
 //#endregion
 
-// 监听图片的变化 获取 图片真实宽高
+//#region  监听图片的变化 获取 图片真实宽高
 const imageWidth = ref(0)
 const imageHeight = ref(0)
 const imgWidth = ref(0)
@@ -136,6 +137,7 @@ watch(image,(newvalue,_oldvalue)=>{
 },{
   "immediate":true,
 })
+//#endregion
 
 const savelabel = async function(){
   let txt = JSON.stringify(labeldata.value)
@@ -181,7 +183,10 @@ window.onresize = function(){
 //#region  初始化 禁止选择 右键菜单 滚轮监听
 onMounted(async ()=>{
   // appWindow.setAlwaysOnTop(true)
-  fabricinit('c')
+  canvas = new fabric.Canvas('c',{
+    selection:true,
+  })
+  fabricinit()
   fabricrect()
   cv = new fabric.Canvas('cv')
   let txtpath = await resolve(dirpath.value,'label.txt')
@@ -289,7 +294,6 @@ const search = function(){
 // }
 //#endregion
 
-
 //#region 调用paddleocr-json 识别截图内容
 const cmdjs = async function(imagepath:string){
   let data = "";
@@ -314,7 +318,7 @@ const cmdjs = async function(imagepath:string){
 //#endregion
 
 //#region  初始化画布
-const fabricinit = function(id:string){
+const fabricinit = function(){
   fabric.Object.prototype.transparentCorners = false;
   fabric.Object.prototype.cornerColor = 'rgba(0,0,0,1)';
   fabric.Object.prototype.cornerStyle = 'circle';
@@ -326,7 +330,6 @@ const fabricinit = function(id:string){
     let index = labeldata.value.findIndex(item=>{
       return item.name == filename.value
     })
-    console.log(transform)
     if(target._objects != undefined){
       target._objects.forEach((e:any) => {
         canvas.remove(e);
@@ -344,7 +347,6 @@ const fabricinit = function(id:string){
       canvas.requestRenderAll();
       canvas.discardActiveObject();
       labeldata.value[index].data.filter((item:any,i:any)=>{
-        console.log(item.name,name)
         if(item.name == name){
           labeldata.value[index].data.splice(i,1)
         }
@@ -352,7 +354,6 @@ const fabricinit = function(id:string){
     }
     canvas.clear()
     labeldata.value[index].data.filter((item:any,i:any)=>{
-        console.log(i)
         labeldata.value[index].data[i].name = i.toString()
         let rect = new fabric.Rect({
         left:item.left * (imgWidth.value/imageWidth.value) ,
@@ -394,10 +395,6 @@ const fabricinit = function(id:string){
     offsetX: 0,
     offsetY: -35
   });
-
-  canvas= new fabric.Canvas(id,{
-    selection:true,
-  })
 }
 //#endregion
 
@@ -691,10 +688,8 @@ const corpimage = async function(dir:string,name:string,data:{
       })
     }
   })
-
   return await getcorpstr
 }
-
 //#endregion
 
 const clipimage =async function(){
@@ -721,7 +716,6 @@ const cliponeimage = async function(){
   let localdatapath = await appLocalDataDir()
   let path = await resolve(localdatapath,'ocr.'+ext)
   await writeFile(path,(new Uint8Array(await blob.arrayBuffer())))
-
   let data:any =  await cmdjs(path)
   if(isArray(data.data)&&data.code == 100){
     input.value = ""
@@ -735,23 +729,6 @@ const cliponeimage = async function(){
       "message":data.data
     })
   }
-}
-
-const b64ToBlob = function(urlData:string) {
-  var arr:any[] = urlData.split(',');
-  var mime = arr[0].match(/:(.*?);/)[1] || 'image/jpeg';
-  // 去掉url的头，并转化为byte
-  var bytes = window.atob(arr[1]);
-  // 处理异常,将ascii码小于0的转换为大于0
-  var ab = new ArrayBuffer(bytes.length);
-  // 生成视图（直接针对内存）：8位无符号整数，长度1个字节
-  var ia = new Uint8Array(ab);
-  for (var i = 0; i < bytes.length; i++) {
-      ia[i] = bytes.charCodeAt(i);
-  }
-  return new Blob([ab], {
-      type: mime
-  });
 }
 
 const collapseselect = function(name:string){
@@ -777,7 +754,6 @@ const mergetxt = async function(){
   if(!(await exists(txtpath))){
     await mkdir(txtpath)
   }
-
   let det = '';
   let rec = '';
   for(let i = 0;i<labeldata.value.length;i++){
@@ -802,12 +778,10 @@ const mergetxt = async function(){
     }
     det = det + labeldata.value[i].name + '\t' + JSON.stringify(detobj) + '\n'
   }
-
   let detpath = await resolve(txtpath,'det.txt')
   await writeTextFile(detpath,det)
   let recpath = await resolve(txtpath,'rec.txt')
   await writeTextFile(recpath,rec)
-
   loading.close()
 }
 </script>
