@@ -10,6 +10,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@element-plus/icons-vue": "^2.3.1",
     "@tauri-apps/api": ">=2.0.0-beta.0",
     "@tauri-apps/plugin-autostart": "^2.0.0-beta.2",
     "@tauri-apps/plugin-dialog": "^2.0.0-beta.2",
@@ -17,14 +18,18 @@
     "@tauri-apps/plugin-http": "^2.0.0-beta.2",
     "@tauri-apps/plugin-shell": ">=2.0.0-beta.0",
     "axios": "^1.6.8",
+    "canvas": "^2.11.2",
     "element-plus": "^2.7.1",
+    "fabric": "^5.3.0",
     "hotkeys-js": "^3.13.7",
     "pinia": "^2.1.7",
     "pinia-plugin-persistedstate": "^3.2.1",
-    "vue": "^3.3.4"
+    "vue": "^3.3.4",
+    "zrender": "^5.5.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": ">=2.0.0-beta.0",
+    "@types/fabric": "^5.3.7",
     "@vitejs/plugin-vue": "^5.0.4",
     "less": "^4.2.0",
     "typescript": "^5.0.2",

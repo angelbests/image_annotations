@@ -14,7 +14,8 @@ export const containersStore = defineStore("containers",{
             images:[] as imgType[],
             imagessearch:[] as imgType[],
             image:"",
-            imageIndex:0
+            imageIndex:0,
+            filename:""
         }
     },
     persist: true,
