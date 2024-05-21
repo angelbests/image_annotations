@@ -1,16 +1,9 @@
-# Tauri + Vue 3 + TypeScript
+# PaddleOcr 图像标注工具
+## 使用方法：
+1.选择对应图像文件或者文件夹
+2.加载完图像后，按住键盘r键后，按住鼠标左键可画出选择框，标注文本内容范围。一个图像可以标注多个文本框
+3.选择对应的标注框，输入对应的标注文本即可，也可使用ocr按钮使用paddleocr识别文本。
+4.标注完内容后，点击对应按钮生成对应的标注截图以及对应的标注det、rec文本。
+5.生成的内容在选择的对应文件夹下，图像在img文件夹下面，文本在txt文件夹下面
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
-
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
-
-## Type Support For `.vue` Imports in TS
-
-Since TypeScript cannot handle type information for `.vue` imports, they are shimmed to be a generic Vue component type by default. In most cases this is fine if you don't really care about component prop types outside of templates. However, if you wish to get actual prop types in `.vue` imports (for example to get props validation when using manual `h(...)` calls), you can enable Volar's Take Over mode by following these steps:
-
-1. Run `Extensions: Show Built-in Extensions` from VS Code's command palette, look for `TypeScript and JavaScript Language Features`, then right click and select `Disable (Workspace)`. By default, Take Over mode will enable itself if the default TypeScript extension is disabled.
-2. Reload the VS Code window by running `Developer: Reload Window` from the command palette.
-
-You can learn more about Take Over mode [here](https://github.com/johnsoncodehk/volar/discussions/471).
+## 此程序使用tauri、fabricjs、vue、pinia库。
