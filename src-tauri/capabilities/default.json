@@ -1,0 +1,125 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-title",
+    "dialog:allow-open",
+    "dialog:allow-ask",
+    "dialog:allow-confirm",
+    "dialog:allow-save",
+    "fs:allow-lstat",
+    "fs:allow-fstat",
+    "fs:allow-ftruncate",
+    "fs:read-all",
+    "fs:read-dirs",
+    "fs:read-files",
+    "fs:read-meta",
+    "fs:scope",
+    {
+      "identifier":"fs:allow-read-text-file",
+      "allow": [{"path": "**"}]
+    },
+    {
+      "identifier":"fs:allow-read-dir",
+      "allow": [{"path": "**"}]
+    },
+    {
+      "identifier":"fs:allow-open",
+      "allow": [{"path": "**"}]
+    },
+    {
+      "identifier":"fs:allow-read",
+      "allow": [{"path": "**"}]
+    },
+    {
+      "identifier":"fs:allow-write",
+      "allow": [{"path": "**"}]
+    },
+    {
+      "identifier":"fs:allow-mkdir",
+      "allow": [{"path": "**"}]
+    },
+    {
+      "identifier":"fs:allow-exists",
+      "allow": [{"path": "**"}]
+    },
+    {
+      "identifier":"fs:allow-create",
+      "allow": [{"path": "**"}]
+    },
+    "shell:allow-open",
+    {
+      "identifier":"shell:allow-execute",
+      "allow": [
+        {
+          "name":"PaddleOCR-json",
+          "cmd": "$RESOURCE\\PaddleOCR-json\\PaddleOCR-json.exe",
+          "args":true
+        }
+      ]
+    },
+    {
+      "identifier":"shell:allow-spawn",
+      "allow": [
+        {
+          "name":"PaddleOCR-json",
+          "cmd": "$RESOURCE\\PaddleOCR-json\\PaddleOCR-json.exe",
+          "args":true
+        }
+      ]
+    },
+    {
+      "identifier":"shell:allow-stdin-write",
+      "allow": [
+        {
+          "name":"PaddleOCR-json",
+          "cmd": "$RESOURCE\\PaddleOCR-json\\PaddleOCR-json.exe",
+          "args":true
+        }
+      ]
+    },
+    {
+      "identifier":"fs:allow-resource-meta",
+      "allow": [{"path": "**"}]
+    },
+    {
+      "identifier":"fs:allow-resource-meta-recursive",
+      "allow": [{"path": "**"}]
+    },
+    {
+      "identifier":"fs:allow-resource-read",
+      "allow": [{"path": "**"}]
+    },
+    {
+      "identifier":"fs:allow-resource-read-recursive",
+      "allow": [{"path": "**"}]
+    },
+    {
+      "identifier":"fs:allow-resource-write",
+      "allow": [{"path": "**"}]
+    },
+    {
+      "identifier":"fs:allow-resource-write-recursive",
+      "allow": [{"path": "**"}]
+    },
+    {
+      "identifier":"fs:scope-resource",
+      "allow": [{"path": "**"}]
+    },
+    {
+      "identifier":"fs:scope-resource-index",
+      "allow": [{"path": "**"}]
+    },
+    {
+      "identifier":"fs:scope-resource-recursive",
+      "allow": [{"path": "**"}]
+    }
+
+    
+  ]
+}

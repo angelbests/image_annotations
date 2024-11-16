@@ -1,0 +1,65 @@
+{
+  "productName": "image_annotations",
+  "version": "0.1.0",
+  "identifier": "com.tauri.imageannotations",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:14202",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {"windows": [
+      {
+        "title": "图片标注工具",
+        "width": 1200,
+        "height": 800,
+        "center": true
+      }
+    ],
+    "withGlobalTauri": false,
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable":true,
+        "scope": [
+          "**","$RESOURCE\\**"
+        ]
+      }
+    }
+  },
+  "bundle": {
+    "resources":[
+      "PaddleOCR-json\\models\\ch_PP-OCRv3_det_infer\\*",
+      "PaddleOCR-json\\models\\ch_PP-OCRv3_rec_infer\\*",
+      "PaddleOCR-json\\models\\*",
+      "PaddleOCR-json\\*"
+    ],
+    "active": true,
+    "targets": "all",
+    "shortDescription": "PaddleOCR图片标注工具",
+    "copyright": "angelbests",
+    "category": "DeveloperTool",
+    "longDescription": "PaddleOCR图片标注工具",
+    "publisher": "angelbests",
+    "windows": {
+      "allowDowngrades": true,
+      "certificateThumbprint": null,
+      "digestAlgorithm": null,
+      "nsis": null,
+      "timestampUrl": null,
+      "tsp": false,
+      "webviewInstallMode": {
+        "silent": true,
+        "type": "downloadBootstrapper"
+      },
+      "wix": null
+    },
+    "icon": [ 
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico",
+      "icons/icon.icns"
+    ]
+  }
+}
