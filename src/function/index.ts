@@ -19,6 +19,7 @@ export const openfile = async function() {
         "multiple":true,
         "filters":[{"extensions":["png","jpg","jpeg","webp"],"name":"图片"}]
     })
+    console.log(imgfiles)
     let load = ElLoading.service({
         "text":"加载图片中...",
     })
@@ -27,11 +28,11 @@ export const openfile = async function() {
         return
     }
     for(let i = 0 ;i < imgfiles.length ; i++){
-        const httpsrc = convertFileSrc(imgfiles[i].path)
-        let name = await basename(imgfiles[i].path)
+        const httpsrc = convertFileSrc(imgfiles[i])
+        let name = await basename(imgfiles[i])
         images.push({
         httpsrc:httpsrc,
-        path:imgfiles[i].path,
+        path:imgfiles[i],
         name:name,
         bool:false
         })

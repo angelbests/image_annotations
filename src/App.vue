@@ -4,7 +4,7 @@ import { opendir,openfile,b64ToBlob } from './function';
 
 import { create,exists,readTextFile,writeTextFile, writeFile,mkdir} from '@tauri-apps/plugin-fs';
 import { appLocalDataDir, extname, resolve,resourceDir} from '@tauri-apps/api/path';
-import { convertFileSrc, invoke} from '@tauri-apps/api/core';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { Command } from '@tauri-apps/plugin-shell';
 
